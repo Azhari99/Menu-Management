@@ -6,6 +6,7 @@
 
 	<div class="row">
 		<div class="col-lg-8">
+			<?= $this->session->flashdata('message'); ?>
 
 			<form class="user" method="POST" action="<?= base_url('User/changepassword') ?>">
 				<div class="form-group row">
@@ -29,6 +30,7 @@
 					</div>
 					<div class="col-sm-5">
 						<input type="password" class="form-control" id="password2" name="password2" placeholder="Confirm Password">
+						<?= form_error('password2', '<small class="text-danger pl-3">', '</small>'); ?>
 					</div>
 				</div>
 				<div class="form-group row justify-content-end">

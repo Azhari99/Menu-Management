@@ -3,12 +3,12 @@ defined('BASEPATH') or exit('No direct script access allowed');
 
 class Auth extends CI_Controller
 {
-	private $_table = 'user';
 
 	public function __construct()
 	{
 		parent::__construct();
 		$this->load->library('form_validation');
+		$this->load->library('email');
 		$this->load->model('m_users');
 	}
 
@@ -124,11 +124,95 @@ class Auth extends CI_Controller
 			// 	'date_create' => time()
 
 			// ];
+
+			//token
+			$token = base64_encode(random_bytes(32));
+
 			$this->m_users->save();
+			$this->m_users->saveUserToken($token);
+			$this->_sendEmail($token, 'verify');
+
 			if ($this->db->affected_rows() > 0) {
 				$this->session->set_flashdata('message', '<div class="alert alert-success" role="alert">
-				Congratulation! your account has been created. Please Actived.</div>');
+				Congratulation! your account has been created. Please active your account</div>');
 			}
+			redirect('Auth');
+		}
+	}
+
+	private function _sendEmail($token, $type)
+	{
+		$email = $this->input->post('email');
+		$config = [
+			'protocol' => 'smtp',
+			'smtp_host' => 'ssl://smtp.googlemail.com',
+			'smtp_user' => 'ff.developersolution@gmail.com',
+			'smtp_pass' => '1234567890azhari',
+			'smtp_port' => 465,
+			'mailtype' => 'html',
+			'charset' => 'utf-8',
+			'newline' => "\r\n"
+		];
+
+		$this->email->initialize($config);
+
+		$this->email->from('ff.developersolution@gmail.com', 'FF Developer Solution');
+		$this->email->to($email);
+
+		if ($type == 'verify') {
+			$this->email->subject('Account Verification');
+			$this->email->message('Click thid link to verify your account : <a href="' . base_url() . 'Auth/verify?email=' . $email . '&token=' . urlencode($token) . '">Activate</a>');
+		}
+
+		if ($this->email->send()) {
+			return true;
+		} else {
+			echo $this->email->print_debugger();
+			die;
+		}
+	}
+
+	public function verify()
+	{
+		$email = $this->input->get('email');
+		$token = $this->input->get('token');
+
+		$user = $this->m_users->UserByEmail($email)->row();
+
+		if ($user) {
+			$user_token = $this->db->get_where('user_token', ['token' => $token])->row();
+			if ($user_token) {
+				if (time() - $user_token->date_created < 86400) { //token akan expired jika lebih dr 24 jam
+
+					//update is_active table user where email
+					$this->db->set('is_active', 1);
+					$this->db->where('email', $email);
+					$this->db->update('user');
+
+					//delete user token by email, karena sudah tidak dibutuhkan.
+					$this->db->delete('user_token', ['email' => $email]);
+
+					$this->session->set_flashdata('message', '<div class="alert alert-success" role="alert">
+					' . $email . ' has been activated! Please login</div>');
+					redirect('Auth');
+				} else {
+
+					//delete user dan user token
+					$this->db->delete('user', ['email' => $email]);
+					$this->db->delete('user_token', ['email' => $email]);
+
+					$this->session->set_flashdata('message', '<div class="alert alert-danger" role="alert">
+					Account activation failed! Token expired.</div>');
+					redirect('Auth');
+				}
+			} else {
+				$this->session->set_flashdata('message', '<div class="alert alert-danger" role="alert">
+				Account activation failed! Token invalid.</div>');
+				redirect('Auth');
+			}
+		} else {
+			$this->session->set_flashdata('message', '<div class="alert alert-danger" role="alert">
+			Account activation failed! Wrong email.</div>');
 			redirect('Auth');
 		}
 	}

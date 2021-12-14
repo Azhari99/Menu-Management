@@ -4,6 +4,7 @@ defined('BASEPATH') or exit('No direct script access allowed');
 class M_users extends CI_Model
 {
 	private $_table = 'user';
+	private $_table2 = 'user_token';
 
 	public function list()
 	{
@@ -29,10 +30,10 @@ class M_users extends CI_Model
 		$post = $this->input->post();
 		$this->name = $post['name'];
 		$this->email = $post['email'];
-		$this->image = 'default.jpg';
+		$this->image = 'default.png';
 		$this->password = password_hash($post['password1'], PASSWORD_DEFAULT);
 		$this->role_id = 2;
-		$this->is_active = 1;
+		$this->is_active = 0;
 		$this->date_create = time();
 		// $data = [
 		// 	'name' => htmlspecialchars($this->input->post('name', true)),
@@ -45,6 +46,17 @@ class M_users extends CI_Model
 
 		// ];
 		$this->db->insert($this->_table, $this);
+	}
+
+	public function saveUserToken($token)
+	{
+		$email = $this->input->post('email');
+		$user_token = [
+			'email' => $email,
+			'token' => $token,
+			'date_created' => time()
+		];
+		$this->db->insert($this->_table2, $user_token);
 	}
 
 	public function update()

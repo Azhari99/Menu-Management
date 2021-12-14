@@ -92,7 +92,10 @@ class User extends CI_Controller
 			'matches' => 'Password not match!',
 			'min_length' => 'Password too short!'
 		]);
-		$this->form_validation->set_rules('password2', 'Password Confirmation', 'required|trim|matches[password1]');
+		$this->form_validation->set_rules('password2', 'Password Confirmation', 'required|trim|min_length[3]|matches[password1]', [
+			'matches' => 'Password not match!',
+			'min_length' => 'Password too short!'
+		]);
 
 		if ($this->form_validation->run() == false) {
 			$this->load->view('templates/header', $data);
@@ -100,6 +103,32 @@ class User extends CI_Controller
 			$this->load->view('templates/topbar', $data);
 			$this->load->view('user/changepassword', $data);
 			$this->load->view('templates/footer');
+		} else {
+			$oldpassword = $this->input->post('oldpassword');
+			$newpassword = $this->input->post('password1');
+
+			if (!password_verify($oldpassword, $data['user']->password)) {
+
+				$this->session->set_flashdata('message', '<div class="alert alert-danger" role="alert">
+				Wrong old password!</div>');
+				redirect('User/changepassword');
+			} else {
+				if ($oldpassword == $newpassword) {
+					$this->session->set_flashdata('message', '<div class="alert alert-danger" role="alert">
+					New password cannot be the same as old password!</div>');
+					redirect('User/changepassword');
+				} else {
+					$password_hash = password_hash($newpassword, PASSWORD_DEFAULT);
+					$this->db->set('password', $password_hash);
+					$this->db->where('email', $email);
+					$this->db->update('user');
+					if ($this->db->affected_rows() > 0) {
+						$this->session->set_flashdata('message', '<div class="alert alert-success" role="alert">
+						Your password changed!</div>');
+					}
+					redirect('User/changepassword');
+				}
+			}
 		}
 	}
 }
